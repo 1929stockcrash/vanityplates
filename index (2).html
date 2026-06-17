@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PLATEDEX — Vanity Plate Database</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* ── TOKENS ───────────────────────────────────────────── */
+  :root {
+    --bg:        #F7F5F0;
+    --ink:       #1A1A1A;
+    --plate-y:   #F5C518;
+    --plate-b:   #1A3A6B;
+    --slate:     #2D3A4A;
+    --muted:     #888;
+    --border:    #DDD9D0;
+    --card-bg:   #FFFFFF;
+    --rejected:  #C0392B;
+    --approved:  #1A7A3C;
+    --spotted:   #7B4FBE;
+    --tag-bg:    #EDEBE5;
+    --radius:    8px;
+    --shadow:    0 2px 12px rgba(0,0,0,0.07);
+  }
+
+  /* ── RESET ────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--ink); min-height: 100vh; }
+  button { cursor: pointer; font-family: inherit; }
+  input, select, textarea { font-family: inherit; }
+  a { color: inherit; text-decoration: none; }
+
+  /* ── HEADER ───────────────────────────────────────────── */
+  header {
+    background: var(--ink);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .logo-plate {
+    background: var(--plate-y);
+    color: var(--ink);
+    font-family: 'Oswald', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 4px 10px;
+    border-radius: 3px;
+    border: 2px solid var(--ink);
+    box-shadow: 2px 2px 0 var(--ink);
+    line-height: 1;
+  }
+  .logo-text {
+    color: #FFF;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .stat-pill {
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.6);
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+  }
+  .stat-pill span { color: var(--plate-y); font-weight: 600; }
+  .btn-submit {
+    background: var(--plate-y);
+    color: var(--ink);
+    border: none;
+    border-radius: var(--radius);
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: opacity 0.15s;
+  }
+  .btn-submit:hover { opacity: 0.85; }
+
+  /* ── LAYOUT ───────────────────────────────────────────── */
+  .layout { display: grid; grid-template-columns: 220px 1fr; gap: 0; min-height: calc(100vh - 60px); }
+
+  /* ── SIDEBAR ──────────────────────────────────────────── */
+  aside {
+    background: var(--card-bg);
+    border-right: 1px solid var(--border);
+    padding: 1.5rem 1rem;
+    position: sticky;
+    top: 60px;
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+  .sidebar-section { margin-bottom: 1.5rem; }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    display: block;
+  }
+  .search-input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font-size: 13px;
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--ink); }
+
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-btn {
+    background: none;
+    border: none;
+    text-align: left;
+    padding: 6px 8px;
+    font-size: 13px;
+    border-radius: 5px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.1s;
+  }
+  .filter-btn:hover { background: var(--tag-bg); }
+  .filter-btn.active { background: var(--ink); color: #FFF; font-weight: 500; }
+  .filter-btn.active .count { background: rgba(255,255,255,0.2); color: #fff; }
+  .count {
+    font-size: 11px;
+    background: var(--tag-bg);
+    color: var(--muted);
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+
+  .tag-filters { display: flex; flex-wrap: wrap; gap: 5px; }
+  .tag-chip {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--ink);
+    transition: all 0.1s;
+  }
+  .tag-chip:hover { border-color: var(--ink); }
+  .tag-chip.active { background: var(--ink); color: #FFF; border-color: var(--ink); }
+
+  /* ── MAIN ─────────────────────────────────────────────── */
+  main { padding: 1.5rem; }
+  .main-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+  }
+  .results-count { font-size: 13px; color: var(--muted); }
+  .results-count strong { color: var(--ink); }
+  .sort-select {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px 10px;
+    font-size: 12px;
+    outline: none;
+    color: var(--ink);
+  }
+
+  /* ── PLATE GRID ───────────────────────────────────────── */
+  .plate-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+  }
+
+  /* ── PLATE CARD ───────────────────────────────────────── */
+  .plate-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+  }
+  .plate-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+  }
+
+  /* The actual plate graphic */
+  .plate-graphic {
+    width: 100%;
+    aspect-ratio: 2.1 / 1;
+    background: var(--plate-y);
+    border-radius: 5px;
+    border: 3px solid #C9A000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    position: relative;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.12);
+    overflow: hidden;
+  }
+  .plate-graphic::before {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 3px;
+    pointer-events: none;
+  }
+  .plate-graphic.rejected-plate { background: #FAFAFA; border-color: #AAA; }
+  .plate-graphic.spotted-plate { background: #EDE8F8; border-color: #9B82D0; }
+
+  .plate-state-top {
+    font-size: 7px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--plate-b);
+    opacity: 0.7;
+    margin-bottom: 1px;
+  }
+  .plate-text {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(18px, 3.5vw, 26px);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--plate-b);
+    line-height: 1;
+  }
+  .plate-graphic.rejected-plate .plate-text { color: #555; }
+  .plate-graphic.spotted-plate .plate-text { color: #4A2E9A; }
+  .plate-bolt {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 50%;
+    top: 5px;
+  }
+  .plate-bolt.left { left: 7px; }
+  .plate-bolt.right { right: 7px; }
+
+  /* Card meta */
+  .card-meta { display: flex; align-items: center; justify-content: space-between; }
+  .status-badge {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .status-rejected { background: #FDECEA; color: var(--rejected); }
+  .status-approved { background: #E8F5EC; color: var(--approved); }
+  .status-spotted  { background: #F0EBF9; color: var(--spotted); }
+
+  .card-state {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .card-reason {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+  .tag {
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--tag-bg);
+    color: var(--slate);
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
+  /* ── EMPTY STATE ──────────────────────────────────────── */
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--muted);
+  }
+  .empty-state .empty-plate {
+    font-family: 'Oswald', sans-serif;
+    font-size: 28px;
+    letter-spacing: 0.15em;
+    color: var(--border);
+    margin-bottom: 1rem;
+    display: inline-block;
+    background: var(--card-bg);
+    border: 3px solid var(--border);
+    padding: 8px 20px;
+    border-radius: 6px;
+  }
+  .empty-state p { font-size: 14px; }
+
+  /* ── MODAL OVERLAY ────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--card-bg);
+    border-radius: 12px;
+    width: 100%;
+    max-width: 480px;
+    padding: 2rem;
+    transform: translateY(16px);
+    transition: transform 0.2s;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+  .modal-title { font-size: 17px; font-weight: 600; }
+  .modal-close {
+    background: var(--tag-bg);
+    border: none;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted);
+  }
+  .modal-close:hover { background: var(--border); }
+
+  /* Form */
+  .form-row { margin-bottom: 1rem; }
+  .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--slate); margin-bottom: 5px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 9px 11px;
+    font-size: 14px;
+    background: var(--bg);
+    outline: none;
+    color: var(--ink);
+    transition: border-color 0.15s;
+  }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--ink); }
+  .form-input.plate-field {
+    font-family: 'Oswald', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    text-align: center;
+    background: var(--plate-y);
+    border-color: #C9A000;
+    color: var(--plate-b);
+  }
+  .form-textarea { resize: vertical; min-height: 70px; }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .tag-select-group { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag-toggle {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink);
+    transition: all 0.1s;
+  }
+  .tag-toggle.selected { background: var(--ink); color: #FFF; border-color: var(--ink); }
+
+  .btn-primary {
+    width: 100%;
+    background: var(--ink);
+    color: #FFF;
+    border: none;
+    border-radius: var(--radius);
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 0.5rem;
+    transition: opacity 0.15s;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+
+  /* ── DETAIL MODAL ─────────────────────────────────────── */
+  .detail-plate {
+    width: 100%;
+    aspect-ratio: 2.5 / 1;
+    background: var(--plate-y);
+    border-radius: 8px;
+    border: 4px solid #C9A000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    position: relative;
+    box-shadow: inset 0 0 0 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .detail-plate.rejected-plate { background: #F5F5F5; border-color: #AAA; }
+  .detail-plate.spotted-plate  { background: #EDE8F8; border-color: #9B82D0; }
+  .detail-plate .plate-state-top { font-size: 10px; }
+  .detail-plate .plate-text { font-size: 40px; }
+  .detail-plate .plate-bolt { width: 10px; height: 10px; top: 8px; }
+  .detail-plate .plate-bolt.left { left: 12px; }
+  .detail-plate .plate-bolt.right { right: 12px; }
+
+  .detail-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .detail-field { background: var(--bg); border-radius: var(--radius); padding: 10px 12px; }
+  .detail-field-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 3px; }
+  .detail-field-value { font-size: 13px; font-weight: 500; color: var(--ink); }
+  .detail-reason { background: var(--bg); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 1rem; font-size: 13px; color: var(--slate); line-height: 1.5; }
+
+  /* ── TOAST ────────────────────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink);
+    color: #FFF;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 300;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── SCROLLBAR ────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .plate-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-plate">PLTDEX</div>
+    <span class="logo-text">Vanity Plate Database</span>
+  </div>
+  <div class="header-right">
+    <div class="stat-pill">🚗 <span id="total-count">0</span> plates</div>
+    <button class="btn-submit" onclick="openSubmitModal()">+ Submit a sighting</button>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="sidebar-section">
+      <span class="sidebar-label">Search</span>
+      <input class="search-input" type="text" id="search-input" placeholder="Search plates…" oninput="applyFilters()" />
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-label">Status</span>
+      <div class="filter-group" id="status-filters">
+        <button class="filter-btn active" data-status="all" onclick="setStatus('all')">All plates <span class="count" id="cnt-all">0</span></button>
+        <button class="filter-btn" data-status="rejected" onclick="setStatus('rejected')">❌ Rejected <span class="count" id="cnt-rejected">0</span></button>
+        <button class="filter-btn" data-status="approved" onclick="setStatus('approved')">✅ Approved <span class="count" id="cnt-approved">0</span></button>
+        <button class="filter-btn" data-status="spotted" onclick="setStatus('spotted')">👀 Spotted IRL <span class="count" id="cnt-spotted">0</span></button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-label">State</span>
+      <select class="search-input" id="state-filter" onchange="applyFilters()">
+        <option value="">All states</option>
+      </select>
+    </div>
+
+    <div class="sidebar-section">
+      <span class="sidebar-label">Tags</span>
+      <div class="tag-filters" id="tag-filters"></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main>
+    <div class="main-toolbar">
+      <span class="results-count" id="results-count">Showing <strong>0</strong> plates</span>
+      <select class="sort-select" id="sort-select" onchange="applyFilters()">
+        <option value="newest">Newest first</option>
+        <option value="alpha">A → Z</option>
+        <option value="state">By state</option>
+      </select>
+    </div>
+    <div class="plate-grid" id="plate-grid"></div>
+  </main>
+</div>
+
+<!-- SUBMIT MODAL -->
+<div class="modal-overlay" id="submit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Submit a plate sighting</span>
+      <button class="modal-close" onclick="closeModal('submit-modal')">✕</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Plate text</label>
+      <input class="form-input plate-field" type="text" id="f-plate" placeholder="YOLO420" maxlength="8" oninput="this.value=this.value.toUpperCase()" />
+    </div>
+    <div class="form-row-2">
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-label">State</label>
+        <select class="form-select" id="f-state"></select>
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-label">Status</label>
+        <select class="form-select" id="f-status">
+          <option value="spotted">👀 Spotted IRL</option>
+          <option value="rejected">❌ Rejected</option>
+          <option value="approved">✅ Approved</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:1rem">
+      <label class="form-label">Notes / why it's funny</label>
+      <textarea class="form-textarea" id="f-reason" placeholder="e.g. 'clearly trying to say something NSFW with 6 characters'"></textarea>
+    </div>
+    <div class="form-row">
+      <label class="form-label">Tags</label>
+      <div class="tag-select-group" id="f-tags"></div>
+    </div>
+    <button class="btn-primary" onclick="submitPlate()">Add to database</button>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="detail-title">Plate detail</span>
+      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div class="detail-plate" id="detail-plate-graphic">
+      <div class="plate-bolt left"></div>
+      <div class="plate-bolt right"></div>
+      <div class="plate-state-top" id="detail-state-label"></div>
+      <div class="plate-text" id="detail-plate-text"></div>
+    </div>
+    <div class="detail-meta">
+      <div class="detail-field">
+        <div class="detail-field-label">Status</div>
+        <div class="detail-field-value" id="detail-status"></div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-label">State</div>
+        <div class="detail-field-value" id="detail-state"></div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-label">Source</div>
+        <div class="detail-field-value" id="detail-source"></div>
+      </div>
+      <div class="detail-field">
+        <div class="detail-field-label">Year</div>
+        <div class="detail-field-value" id="detail-year"></div>
+      </div>
+    </div>
+    <div class="detail-reason" id="detail-reason"></div>
+    <div class="card-tags" id="detail-tags"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONSTANTS ─────────────────────────────────────────────
+const ALL_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
+const ALL_TAGS = ["rude","punny","cryptic","car-related","nsfw-adjacent","sports","political","food","animals","names","cringe","based","inexplicable"];
+
+// ── SEED DATA (FOIA-sourced + NYC Kaggle) ──────────────────
+const SEED = [
+  // NYC FOIA rejections 2010-2014
+  {id:1,  plate:"ASSHOLE",  state:"NY", status:"rejected", reason:"Profanity — denied by NYC DMV", tags:["rude","nsfw-adjacent"], source:"NYC FOIA", year:2012},
+  {id:2,  plate:"GETALIFE", state:"NY", status:"rejected", reason:"Expression of contempt or ridicule", tags:["rude","cringe"], source:"NYC FOIA", year:2011},
+  {id:3,  plate:"IKILLU",   state:"NY", status:"rejected", reason:"Promotes or implies violence", tags:["rude"], source:"NYC FOIA", year:2013},
+  {id:4,  plate:"420BLZIT", state:"NY", status:"rejected", reason:"Drug reference", tags:["nsfw-adjacent","cringe"], source:"NYC FOIA", year:2014},
+  {id:5,  plate:"PRNHB",    state:"MA", status:"rejected", reason:"\"Significance/meaning of the plate is missing or incomplete\" — but we all know what this is", tags:["nsfw-adjacent","cryptic"], source:"MA FOIA 2022", year:2022},
+  {id:6,  plate:"BEWBZ",    state:"MA", status:"rejected", reason:"Phonetic spelling of a body part. The RMV \"didn't get it\"", tags:["nsfw-adjacent","punny"], source:"MA FOIA 2022", year:2022},
+  {id:7,  plate:"VAG69",    state:"MA", status:"rejected", reason:"Refers to a sexual body part or act", tags:["rude","nsfw-adjacent"], source:"MA FOIA 2022", year:2022},
+  {id:8,  plate:"SLOWAF",   state:"MA", status:"rejected", reason:"Contains profanity (the AF suffix)", tags:["rude","cringe"], source:"MA FOIA 2022", year:2022},
+  {id:9,  plate:"LOUDAF",   state:"MA", status:"rejected", reason:"Profanity suffix — same fate as SLOWAF", tags:["rude","cringe"], source:"MA FOIA 2022", year:2022},
+  {id:10, plate:"SMUT",     state:"MA", status:"rejected", reason:"Profanity", tags:["rude"], source:"MA FOIA 2022", year:2022},
+  {id:11, plate:"SHTBOX",   state:"MA", status:"rejected", reason:"Profanity — phonetic spelling", tags:["rude","punny"], source:"MA FOIA 2022", year:2022},
+  {id:12, plate:"FOMO",     state:"MA", status:"rejected", reason:"Rejected for profanity. The RMV thought the F stood for something ruder than 'fear'", tags:["cringe","inexplicable"], source:"MA FOIA 2022", year:2022},
+  {id:13, plate:"BALLS",    state:"MA", status:"rejected", reason:"\"Vulgar in that it is in poor taste or is degrading\" per the RMV", tags:["rude"], source:"MA FOIA 2022", year:2022},
+  {id:14, plate:"YUCK",     state:"MA", status:"rejected", reason:"RMV decided 'yuck' shows \"contempt, ridicule, or superiority of a race, religion, deity...\" — a reach", tags:["inexplicable","rude"], source:"MA FOIA 2022", year:2022},
+  {id:15, plate:"DILF",     state:"MA", status:"rejected", reason:"Acronym for an NSFW phrase", tags:["nsfw-adjacent","cringe"], source:"MA FOIA 2022", year:2022},
+  {id:16, plate:"GLOCK7",   state:"MA", status:"rejected", reason:"Weapon reference", tags:["rude"], source:"MA FOIA 2022", year:2022},
+  {id:17, plate:"AYKFM",    state:"MA", status:"rejected", reason:"Acronym — stands for 'Are You K***ing F***ing Me'", tags:["rude","cryptic"], source:"MA FOIA 2022", year:2022},
+  {id:18, plate:"BULL",     state:"CO", status:"rejected", reason:"Denied by Colorado DMV", tags:["inexplicable","cringe"], source:"CO FOIA 2022", year:2022},
+  {id:19, plate:"HAULNSS",  state:"CO", status:"rejected", reason:"Phonetically suggestive — 'hauling ass'", tags:["punny","rude"], source:"CO FOIA 2022", year:2022},
+  {id:20, plate:"ANUSTART", state:"CO", status:"rejected", reason:"An Arrested Development reference that also reads as something else", tags:["punny","nsfw-adjacent","cringe"], source:"CO FOIA 2022", year:2022},
+  {id:21, plate:"SOBERAF",  state:"CO", status:"rejected", reason:"Profanity suffix again", tags:["rude","cringe"], source:"CO FOIA 2022", year:2022},
+  {id:22, plate:"VOTE",     state:"CO", status:"rejected", reason:"Rejected as political — Colorado said no to 'VOTE'", tags:["political","inexplicable"], source:"CO FOIA 2022", year:2022},
+  {id:23, plate:"HIUGLY",   state:"CO", status:"rejected", reason:"Expression of contempt or ridicule toward others", tags:["rude","cringe"], source:"CO FOIA 2022", year:2022},
+  {id:24, plate:"BADA55",   state:"MA", status:"rejected", reason:"Number-substitution tactic caught by the RMV screeners", tags:["punny","nsfw-adjacent"], source:"MuckRock FOIA 2014", year:2014},
+  {id:25, plate:"BOIBYE",   state:"MA", status:"rejected", reason:"\"Significance/meaning missing\" — the RMV really didn't get Gen Z", tags:["cringe","inexplicable"], source:"MA FOIA 2022", year:2022},
+  {id:26, plate:"DAMN",     state:"MA", status:"rejected", reason:"Listed as missing/incomplete meaning. DAMN is just a word!", tags:["inexplicable"], source:"MA FOIA 2022", year:2022},
+  // Some fun approved/spotted ones for variety
+  {id:27, plate:"PIZZA",    state:"MA", status:"approved", reason:"One of 9,290 approved MA plates in 2022. Someone really likes pizza.", tags:["food","based"], source:"MA FOIA 2022", year:2022},
+  {id:28, plate:"GUCCI",    state:"MA", status:"approved", reason:"Approved. Presumably a fan of the Italian house.", tags:["names","cringe"], source:"MA FOIA 2022", year:2022},
+  {id:29, plate:"TWIN61",   state:"MA", status:"approved", reason:"Natick resident Eileen Hennessey got this to honor being an identical twin", tags:["names","based"], source:"MA FOIA 2022", year:2022},
+  {id:30, plate:"LOLGF",    state:"CA", status:"rejected", reason:"Acronym for an extremely rude dismissal", tags:["rude","cryptic"], source:"MuckRock FOIA CA 2013", year:2013},
+  {id:31, plate:"INFAMOUS", state:"VA", status:"rejected", reason:"Virginia rejected this as having negative connotations", tags:["inexplicable"], source:"MuckRock FOIA VA 2013", year:2013},
+  {id:32, plate:"666",      state:"VA", status:"rejected", reason:"Virginia bans all-number plates and this one especially", tags:["inexplicable"], source:"MuckRock FOIA VA 2013", year:2013},
+  {id:33, plate:"2FAST4U",  state:"NY", status:"spotted", reason:"Classic. Spotted on what was reportedly a Honda Civic", tags:["car-related","cringe","punny"], source:"Crowdsourced", year:2023},
+  {id:34, plate:"ITSME",    state:"FL", status:"spotted", reason:"Seen in Miami. Universal energy.", tags:["cringe","based"], source:"Crowdsourced", year:2024},
+  {id:35, plate:"NOTASPY",  state:"DC", status:"spotted", reason:"DC of course", tags:["punny","political","based"], source:"Crowdsourced", year:2022},
+  {id:36, plate:"LAWYER1",  state:"TX", status:"spotted", reason:"On a lifted Ram 1500. The number implies there are multiple lawyer plates in Texas.", tags:["names","cringe"], source:"Crowdsourced", year:2023},
+  {id:37, plate:"WAIFU",    state:"CA", status:"spotted", reason:"Spotted in Irvine, CA. On an Evo.", tags:["cringe","car-related","based"], source:"Crowdsourced", year:2023},
+  {id:38, plate:"BEERME",   state:"WI", status:"spotted", reason:"Wisconsin, naturally", tags:["food","based","punny"], source:"Crowdsourced", year:2022},
+  {id:39, plate:"SEND IT",  state:"CO", status:"spotted", reason:"Spotted near a ski resort. Colorado approved this.", tags:["based","sports"], source:"Crowdsourced", year:2023},
+  {id:40, plate:"YEET",     state:"TX", status:"spotted", reason:"Seen on a lifted F-250. The truck yeets itself daily.", tags:["car-related","cringe","based"], source:"Crowdsourced", year:2022},
+];
+
+// ── STATE ──────────────────────────────────────────────────
+let plates = [...SEED];
+let nextId = plates.length + 1;
+let activeStatus = 'all';
+let activeTags = [];
+let detailPlate = null;
+
+// ── INIT ───────────────────────────────────────────────────
+function init() {
+  // Populate state dropdowns
+  ALL_STATES.forEach(s => {
+    ['state-filter', 'f-state'].forEach(id => {
+      const el = document.getElementById(id);
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      el.appendChild(opt);
+    });
+  });
+  // Populate tag filters (sidebar)
+  const tagFilters = document.getElementById('tag-filters');
+  ALL_TAGS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tag-chip';
+    btn.textContent = t;
+    btn.onclick = () => toggleTag(t, btn);
+    tagFilters.appendChild(btn);
+  });
+  // Populate tag toggles (form)
+  const fTags = document.getElementById('f-tags');
+  ALL_TAGS.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tag-toggle';
+    btn.textContent = t;
+    btn.type = 'button';
+    btn.onclick = () => btn.classList.toggle('selected');
+    fTags.appendChild(btn);
+  });
+  updateCounts();
+  applyFilters();
+}
+
+// ── COUNTS ─────────────────────────────────────────────────
+function updateCounts() {
+  const c = { all: plates.length, rejected: 0, approved: 0, spotted: 0 };
+  plates.forEach(p => c[p.status]++);
+  document.getElementById('total-count').textContent = plates.length;
+  document.getElementById('cnt-all').textContent = c.all;
+  document.getElementById('cnt-rejected').textContent = c.rejected;
+  document.getElementById('cnt-approved').textContent = c.approved;
+  document.getElementById('cnt-spotted').textContent = c.spotted;
+}
+
+// ── FILTER + RENDER ────────────────────────────────────────
+function applyFilters() {
+  const q = document.getElementById('search-input').value.trim().toUpperCase();
+  const stateF = document.getElementById('state-filter').value;
+  const sort = document.getElementById('sort-select').value;
+
+  let filtered = plates.filter(p => {
+    if (activeStatus !== 'all' && p.status !== activeStatus) return false;
+    if (stateF && p.state !== stateF) return false;
+    if (q && !p.plate.includes(q)) return false;
+    if (activeTags.length && !activeTags.every(t => p.tags.includes(t))) return false;
+    return true;
+  });
+
+  if (sort === 'alpha') filtered.sort((a,b) => a.plate.localeCompare(b.plate));
+  else if (sort === 'state') filtered.sort((a,b) => a.state.localeCompare(b.state));
+  else filtered.sort((a,b) => b.id - a.id);
+
+  document.getElementById('results-count').innerHTML = `Showing <strong>${filtered.length}</strong> plate${filtered.length !== 1 ? 's' : ''}`;
+  renderGrid(filtered);
+}
+
+function renderGrid(data) {
+  const grid = document.getElementById('plate-grid');
+  if (!data.length) {
+    grid.innerHTML = `<div class="empty-state"><div class="empty-plate">??????</div><p>No plates match your filters.<br>Try broadening your search or submit a sighting!</p></div>`;
+    return;
+  }
+  grid.innerHTML = data.map(p => {
+    const cls = p.status === 'rejected' ? 'rejected-plate' : p.status === 'spotted' ? 'spotted-plate' : '';
+    const badge = `<span class="status-badge status-${p.status}">${p.status === 'rejected' ? '❌ Rejected' : p.status === 'approved' ? '✅ Approved' : '👀 Spotted'}</span>`;
+    const tags = p.tags.slice(0,3).map(t => `<span class="tag">${t}</span>`).join('');
+    return `
+    <div class="plate-card" onclick="openDetail(${p.id})">
+      <div class="plate-graphic ${cls}">
+        <div class="plate-bolt left"></div>
+        <div class="plate-bolt right"></div>
+        <div class="plate-state-top">${p.state}</div>
+        <div class="plate-text">${p.plate}</div>
+      </div>
+      <div class="card-meta">${badge}<span class="card-state">${p.state}</span></div>
+      ${p.reason ? `<div class="card-reason">${p.reason}</div>` : ''}
+      <div class="card-tags">${tags}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── STATUS FILTER ──────────────────────────────────────────
+function setStatus(s) {
+  activeStatus = s;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.status === s));
+  applyFilters();
+}
+
+// ── TAG FILTER ─────────────────────────────────────────────
+function toggleTag(t, btn) {
+  if (activeTags.includes(t)) {
+    activeTags = activeTags.filter(x => x !== t);
+    btn.classList.remove('active');
+  } else {
+    activeTags.push(t);
+    btn.classList.add('active');
+  }
+  applyFilters();
+}
+
+// ── DETAIL MODAL ───────────────────────────────────────────
+function openDetail(id) {
+  const p = plates.find(x => x.id === id);
+  if (!p) return;
+  const cls = p.status === 'rejected' ? 'rejected-plate' : p.status === 'spotted' ? 'spotted-plate' : '';
+  const g = document.getElementById('detail-plate-graphic');
+  g.className = `detail-plate ${cls}`;
+  document.getElementById('detail-title').textContent = p.plate;
+  document.getElementById('detail-state-label').textContent = p.state;
+  document.getElementById('detail-plate-text').textContent = p.plate;
+  document.getElementById('detail-status').textContent = p.status === 'rejected' ? '❌ Rejected' : p.status === 'approved' ? '✅ Approved' : '👀 Spotted IRL';
+  document.getElementById('detail-state').textContent = p.state;
+  document.getElementById('detail-source').textContent = p.source || '—';
+  document.getElementById('detail-year').textContent = p.year || '—';
+  document.getElementById('detail-reason').textContent = p.reason || 'No notes.';
+  document.getElementById('detail-tags').innerHTML = p.tags.map(t => `<span class="tag">${t}</span>`).join('');
+  document.getElementById('detail-modal').classList.add('open');
+}
+
+// ── SUBMIT MODAL ───────────────────────────────────────────
+function openSubmitModal() {
+  document.getElementById('f-plate').value = '';
+  document.getElementById('f-reason').value = '';
+  document.querySelectorAll('.tag-toggle').forEach(b => b.classList.remove('selected'));
+  document.getElementById('submit-modal').classList.add('open');
+}
+
+function submitPlate() {
+  const plate = document.getElementById('f-plate').value.trim().toUpperCase();
+  const state = document.getElementById('f-state').value;
+  const status = document.getElementById('f-status').value;
+  const reason = document.getElementById('f-reason').value.trim();
+  const tags = [...document.querySelectorAll('.tag-toggle.selected')].map(b => b.textContent);
+
+  if (!plate || plate.length < 1) { showToast('Enter a plate text first!'); return; }
+  if (!state) { showToast('Select a state!'); return; }
+
+  const newPlate = {
+    id: nextId++,
+    plate, state, status, reason,
+    tags: tags.length ? tags : ['inexplicable'],
+    source: 'Crowdsourced',
+    year: new Date().getFullYear()
+  };
+  plates.unshift(newPlate);
+  updateCounts();
+  applyFilters();
+  closeModal('submit-modal');
+  showToast(`🚗 ${plate} added to the database!`);
+}
+
+// ── UTILS ──────────────────────────────────────────────────
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// Keyboard close
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+});
+
+init();
+</script>
+</body>
+</html>
